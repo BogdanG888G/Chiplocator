@@ -24,6 +24,9 @@ class ProductRepository(
     fun getNewProducts(): Flow<List<Product>> =
         productDao.getNewProducts().map { list -> list.map { it.toDomain() } }
 
+    suspend fun getProductByIdSync(productId: String): Product? =
+        productDao.getProductById(productId)?.toDomain()
+
     suspend fun syncProducts() {
         val remote = remoteDataSource.getProducts()
         if (remote.isNotEmpty()) {

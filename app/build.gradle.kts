@@ -72,8 +72,8 @@ dependencies {
     //implementation(platform(libs.firebase.bom))
     //implementation(libs.firebase.firestore)
 
-    // Maps & Location
-    implementation(libs.play.services.maps)
+    // Yandex MapKit + Location
+    implementation(libs.yandex.mapkit)
     implementation(libs.play.services.location)
 
     // RecyclerView + Glide

@@ -1,13 +1,18 @@
 package com.example.chiplocator.ui.catalog
 
 import android.os.Bundle
-import android.view.*
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Toast
 import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.chiplocator.ChipLocatorApp
+import com.example.chiplocator.R
 import com.example.chiplocator.databinding.FragmentCatalogBinding
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -34,8 +39,18 @@ class CatalogFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         adapter = CatalogAdapter { product ->
-            // Переход на карту с фильтром по товару можно реализовать
-            // через SharedViewModel или аргументы навигации
+            // При нажатии "Где купить?" — переход на карту с фильтром по товару
+            val shopsCount = product.availableInShops.size
+            Toast.makeText(
+                requireContext(),
+                "Товар \"${product.name}\" есть в $shopsCount магазинах",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            val bundle = Bundle().apply {
+                putString("filterProductId", product.id)
+            }
+            findNavController().navigate(R.id.mapFragment, bundle)
         }
 
         binding.rvCatalog.apply {
@@ -51,12 +66,8 @@ class CatalogFragment : Fragment() {
             }
         })
 
-        viewModel.syncProducts()
-
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.products.collectLatest { products ->
-                adapter.submitList(products)
-            }
+            viewModel.products.collectLatest { adapter.submitList(it) }
         }
     }
 

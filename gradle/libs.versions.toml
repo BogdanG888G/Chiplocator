@@ -1,5 +1,6 @@
 [versions]
 agp = "8.5.2"
+yandexMapkit = "4.6.1-lite"
 kotlin = "1.9.24"
 coreKtx = "1.13.1"
 appcompat = "1.7.0"
@@ -24,6 +25,7 @@ espresso = "3.6.1"
 fragmentTesting = "1.8.2"
 
 [libraries]
+yandex-mapkit = { group = "com.yandex.android", name = "maps.mobile", version.ref = "yandexMapkit" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }

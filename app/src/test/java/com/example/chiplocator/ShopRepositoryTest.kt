@@ -1,21 +1,26 @@
-package com.chiplocator.app
+package com.example.chiplocator
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import com.chiplocator.app.data.local.dao.ShopDao
-import com.chiplocator.app.data.local.entity.ShopEntity
-import com.chiplocator.app.data.remote.FirebaseDataSource
-import com.chiplocator.app.data.remote.dto.ShopDto
-import com.chiplocator.app.data.repository.ShopRepository
-import com.chiplocator.app.domain.model.Shop
+import com.example.chiplocator.data.local.dao.ShopDao
+import com.example.chiplocator.data.local.entity.ShopEntity
+import com.example.chiplocator.data.remote.FirebaseDataSource
+import com.example.chiplocator.data.remote.dto.ShopDto
+import com.example.chiplocator.data.repository.ShopRepository
+import com.example.chiplocator.domain.model.Shop
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.kotlin.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ShopRepositoryTest {
@@ -49,13 +54,10 @@ class ShopRepositoryTest {
 
     @Test
     fun `getAllShops returns domain shops from DAO`() = runTest {
-        // Arrange
         whenever(shopDao.getAllShops()).thenReturn(flowOf(listOf(testShopEntity)))
 
-        // Act
         val result = repository.getAllShops().first()
 
-        // Assert
         assertEquals(1, result.size)
         assertEquals("shop_1", result[0].id)
         assertEquals("Пятёрочка на Ленина", result[0].name)
@@ -64,7 +66,6 @@ class ShopRepositoryTest {
 
     @Test
     fun `syncShops saves data from remote to local`() = runTest {
-        // Arrange
         val remoteShop = ShopDto(
             id = "shop_2",
             name = "Магнит",
@@ -76,37 +77,29 @@ class ShopRepositoryTest {
         )
         whenever(remoteDataSource.getShops()).thenReturn(listOf(remoteShop))
 
-        // Act
         repository.syncShops()
 
-        // Assert
         verify(shopDao).deleteAll()
         verify(shopDao).upsertAll(any())
     }
 
     @Test
     fun `syncShops does nothing when remote returns empty list`() = runTest {
-        // Arrange
-        whenever(remoteDataSource.getShops()).thenReturn(emptyList())
+        whenever(remoteDataSource.getShops()).thenReturn(emptyList<ShopDto>())
 
-        // Act
         repository.syncShops()
 
-        // Assert
         verify(shopDao, never()).deleteAll()
         verify(shopDao, never()).upsertAll(any())
     }
 
     @Test
     fun `getShopsWithPromo returns only promo shops`() = runTest {
-        // Arrange
         val promoEntity = testShopEntity.copy(hasPromo = true)
         whenever(shopDao.getShopsWithPromo()).thenReturn(flowOf(listOf(promoEntity)))
 
-        // Act
         val result = repository.getShopsWithPromo().first()
 
-        // Assert
         assertTrue(result.all { it.hasPromo })
     }
 

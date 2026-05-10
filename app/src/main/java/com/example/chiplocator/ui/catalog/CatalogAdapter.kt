@@ -1,11 +1,13 @@
 package com.example.chiplocator.ui.catalog
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.example.chiplocator.R
 import com.example.chiplocator.databinding.ItemProductBinding
 import com.example.chiplocator.domain.model.Product
 
@@ -27,23 +29,21 @@ class CatalogAdapter(
     inner class ProductViewHolder(private val binding: ItemProductBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(product: Product) {
-            binding.tvProductName.text = product.name
-            binding.tvProductPrice.text = "%.0f ₽".format(product.price)
-            binding.badgeNew.visibility =
-                if (product.isNew) android.view.View.VISIBLE else android.view.View.GONE
-            binding.badgePromo.visibility =
-                if (product.isPromo) android.view.View.VISIBLE else android.view.View.GONE
+        fun bind(p: Product) {
+            binding.tvProductName.text = p.name
+            binding.tvProductPrice.text = "%.0f ₽".format(p.price)
+            binding.badgeNew.visibility = if (p.isNew) View.VISIBLE else View.GONE
+            binding.badgePromo.visibility = if (p.isPromo) View.VISIBLE else View.GONE
 
-            if (product.imageUrl.isNotBlank()) {
-                Glide.with(binding.root)
-                    .load(product.imageUrl)
-                    .centerCrop()
-                    .into(binding.ivProduct)
-            }
+            Glide.with(binding.root)
+                .load(p.imageUrl)
+                .placeholder(R.drawable.placeholder_product)
+                .error(R.drawable.placeholder_product)
+                .centerCrop()
+                .into(binding.ivProduct)
 
-            binding.btnWhereToBuy.visibility = android.view.View.VISIBLE
-            binding.btnWhereToBuy.setOnClickListener { onBuyClick(product) }
+            binding.btnWhereToBuy.visibility = View.VISIBLE
+            binding.btnWhereToBuy.setOnClickListener { onBuyClick(p) }
         }
     }
 

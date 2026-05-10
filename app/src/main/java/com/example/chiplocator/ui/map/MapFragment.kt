@@ -2,6 +2,7 @@ package com.example.chiplocator.ui.map
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -18,20 +19,20 @@ import com.example.chiplocator.databinding.FragmentMapBinding
 import com.example.chiplocator.domain.model.Shop
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.chip.Chip
+import com.yandex.mapkit.Animation
+import com.yandex.mapkit.MapKitFactory
+import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.map.CameraPosition
+import com.yandex.mapkit.map.IconStyle
+import com.yandex.mapkit.map.PlacemarkMapObject
+import com.yandex.mapkit.mapview.MapView
+import com.yandex.runtime.image.ImageProvider
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class MapFragment : Fragment(), OnMapReadyCallback {
+class MapFragment : Fragment() {
 
     private var _binding: FragmentMapBinding? = null
     private val binding get() = _binding!!
@@ -40,8 +41,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         MapViewModel.Factory(requireActivity().application as ChipLocatorApp)
     }
 
-    private var googleMap: GoogleMap? = null
-    private val markers = mutableMapOf<String, Marker>()
+    private lateinit var mapView: MapView
+    private val placemarks = mutableMapOf<String, PlacemarkMapObject>()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     private val locationPermissionRequest = registerForActivityResult(
@@ -49,8 +50,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     ) { permissions ->
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
-            enableMyLocation()
+            centerOnMyLocation()
         }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Важно: инициализировать MapKit до создания MapView
+        MapKitFactory.initialize(requireContext())
     }
 
     override fun onCreateView(
@@ -64,27 +71,23 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         super.onViewCreated(view, savedInstanceState)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
-        val mapFragment = childFragmentManager
-            .findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync(this)
+        mapView = binding.mapView
 
-        binding.fabMyLocation.setOnClickListener { centerOnMyLocation() }
+        mapView.map.move(
+            CameraPosition(Point(55.751244, 37.618423), 11.0f, 0.0f, 0.0f)
+        )
+
+        binding.fabMyLocation.setOnClickListener { checkLocationPermission() }
         binding.fabFilter.setOnClickListener { showFilterBottomSheet() }
 
-        viewModel.syncData()
-    }
-
-    override fun onMapReady(map: GoogleMap) {
-        googleMap = map
-        map.uiSettings.isZoomControlsEnabled = true
-        checkLocationPermission()
-        observeShops()
-
-        map.setOnInfoWindowClickListener { marker ->
-            val shopId = marker.tag as? String ?: return@setOnInfoWindowClickListener
-            val bundle = Bundle().apply { putString("shopId", shopId) }
-            findNavController().navigate(R.id.shopDetailFragment, bundle)
+        // Если пришёл фильтр по товару из каталога
+        val productId = arguments?.getString("filterProductId")
+        if (!productId.isNullOrBlank()) {
+            viewModel.setProductFilter(productId)
         }
+
+        viewModel.syncData()
+        observeShops()
     }
 
     private fun observeShops() {
@@ -94,24 +97,57 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun updateMarkers(shops: List<Shop>) {
-        markers.values.forEach { it.remove() }
-        markers.clear()
+        // Очистка старых маркеров
+        placemarks.values.forEach { mapView.map.mapObjects.remove(it) }
+        placemarks.clear()
+
         shops.forEach { shop ->
-            val icon = when {
-                shop.hasPromo -> BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
-                shop.hasNewProducts -> BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)
-                else -> BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
+            val color = when {
+                shop.hasPromo -> Color.RED
+                shop.hasNewProducts -> Color.BLUE
+                else -> Color.rgb(0, 150, 0)
             }
-            val marker = googleMap?.addMarker(
-                MarkerOptions()
-                    .position(LatLng(shop.latitude, shop.longitude))
-                    .title(shop.name)
-                    .snippet(shop.address)
-                    .icon(icon)
+
+            val placemark = mapView.map.mapObjects.addPlacemark(
+                Point(shop.latitude, shop.longitude),
+                ImageProvider.fromBitmap(createMarkerBitmap(color))
             )
-            marker?.tag = shop.id
-            if (marker != null) markers[shop.id] = marker
+
+            placemark.userData = shop
+            placemark.addTapListener { mapObject, _ ->
+                val tappedShop = mapObject.userData as? Shop
+                if (tappedShop != null) {
+                    val bundle = Bundle().apply { putString("shopId", tappedShop.id) }
+                    findNavController().navigate(R.id.shopDetailFragment, bundle)
+                }
+                true
+            }
+
+            placemarks[shop.id] = placemark
         }
+    }
+
+    /**
+     * Простой круглый маркер заданного цвета.
+     */
+    private fun createMarkerBitmap(color: Int): android.graphics.Bitmap {
+        val size = 60
+        val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        val paint = android.graphics.Paint().apply {
+            isAntiAlias = true
+            this.color = color
+            style = android.graphics.Paint.Style.FILL
+        }
+        canvas.drawCircle(size / 2f, size / 2f, size / 2.5f, paint)
+
+        // Белая обводка
+        paint.color = Color.WHITE
+        paint.style = android.graphics.Paint.Style.STROKE
+        paint.strokeWidth = 5f
+        canvas.drawCircle(size / 2f, size / 2f, size / 2.5f, paint)
+
+        return bitmap
     }
 
     private fun showFilterBottomSheet() {
@@ -135,7 +171,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         if (ContextCompat.checkSelfPermission(
                 requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED) {
-            enableMyLocation()
+            centerOnMyLocation()
         } else {
             locationPermissionRequest.launch(arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
@@ -144,26 +180,32 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun enableMyLocation() {
-        if (ContextCompat.checkSelfPermission(
-                requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED) {
-            googleMap?.isMyLocationEnabled = true
-            centerOnMyLocation()
-        }
-    }
-
     private fun centerOnMyLocation() {
         if (ContextCompat.checkSelfPermission(
                 requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED) return
+
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             location?.let {
-                googleMap?.animateCamera(
-                    CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 14f)
+                mapView.map.move(
+                    CameraPosition(Point(it.latitude, it.longitude), 14.0f, 0.0f, 0.0f),
+                    Animation(Animation.Type.SMOOTH, 1f),
+                    null
                 )
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        MapKitFactory.getInstance().onStart()
+        mapView.onStart()
+    }
+
+    override fun onStop() {
+        mapView.onStop()
+        MapKitFactory.getInstance().onStop()
+        super.onStop()
     }
 
     override fun onDestroyView() {
