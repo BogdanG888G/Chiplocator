@@ -1,20 +1,17 @@
 package com.example.chiplocator.ui.list
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.chiplocator.ChipLocatorApp
 import com.example.chiplocator.R
 import com.example.chiplocator.databinding.FragmentListBinding
-import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -27,7 +24,7 @@ class ListFragment : Fragment() {
         ListViewModel.Factory(requireActivity().application as ChipLocatorApp)
     }
 
-    private lateinit var adapter: ShopAdapter
+    private lateinit var shopAdapter: ShopAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -39,28 +36,30 @@ class ListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        adapter = ShopAdapter { shop ->
+        setupRecyclerView()
+        observeShops()
+    }
+
+    private fun setupRecyclerView() {
+        shopAdapter = ShopAdapter { shop ->
             val bundle = Bundle().apply { putString("shopId", shop.id) }
-            findNavController().navigate(R.id.shopDetailFragment, bundle)
+            findNavController().navigate(
+                R.id.action_listFragment_to_shopDetailFragment,
+                bundle
+            )
         }
-        binding.recyclerView.adapter = adapter
 
-        tryGetLocation()
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.shops.collectLatest { adapter.submitList(it) }
+        binding.recyclerView.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = shopAdapter
         }
     }
 
-    private fun tryGetLocation() {
-        if (ContextCompat.checkSelfPermission(
-                requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED) {
-            LocationServices.getFusedLocationProviderClient(requireActivity())
-                .lastLocation
-                .addOnSuccessListener { loc ->
-                    loc?.let { viewModel.setUserLocation(it.latitude, it.longitude) }
-                }
+    private fun observeShops() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.shops.collectLatest { shops ->
+                shopAdapter.submitList(shops)
+            }
         }
     }
 

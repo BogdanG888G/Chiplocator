@@ -2,8 +2,12 @@ package com.example.chiplocator.ui.map
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -25,7 +29,6 @@ import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraPosition
-import com.yandex.mapkit.map.IconStyle
 import com.yandex.mapkit.map.PlacemarkMapObject
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
@@ -41,7 +44,7 @@ class MapFragment : Fragment() {
         MapViewModel.Factory(requireActivity().application as ChipLocatorApp)
     }
 
-    private lateinit var mapView: MapView
+    private var mapView: MapView? = null
     private val placemarks = mutableMapOf<String, PlacemarkMapObject>()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
@@ -49,7 +52,8 @@ class MapFragment : Fragment() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
             centerOnMyLocation()
         }
     }
@@ -73,7 +77,8 @@ class MapFragment : Fragment() {
 
         mapView = binding.mapView
 
-        mapView.map.move(
+        // Стартовая камера — Москва
+        mapView?.map?.move(
             CameraPosition(Point(55.751244, 37.618423), 11.0f, 0.0f, 0.0f)
         )
 
@@ -97,8 +102,14 @@ class MapFragment : Fragment() {
     }
 
     private fun updateMarkers(shops: List<Shop>) {
-        // Очистка старых маркеров
-        placemarks.values.forEach { mapView.map.mapObjects.remove(it) }
+        val map = mapView?.map ?: return
+
+        // Очистка старых маркеров — безопасно, через mapObjects.clear()
+        try {
+            map.mapObjects.clear()
+        } catch (e: Exception) {
+            Log.w("MapFragment", "Failed to clear map objects: ${e.message}")
+        }
         placemarks.clear()
 
         shops.forEach { shop ->
@@ -108,42 +119,49 @@ class MapFragment : Fragment() {
                 else -> Color.rgb(0, 150, 0)
             }
 
-            val placemark = mapView.map.mapObjects.addPlacemark(
-                Point(shop.latitude, shop.longitude),
-                ImageProvider.fromBitmap(createMarkerBitmap(color))
-            )
+            try {
+                val placemark = map.mapObjects.addPlacemark(
+                    Point(shop.latitude, shop.longitude),
+                    ImageProvider.fromBitmap(createMarkerBitmap(color))
+                )
 
-            placemark.userData = shop
-            placemark.addTapListener { mapObject, _ ->
-                val tappedShop = mapObject.userData as? Shop
-                if (tappedShop != null) {
-                    val bundle = Bundle().apply { putString("shopId", tappedShop.id) }
-                    findNavController().navigate(R.id.shopDetailFragment, bundle)
+                placemark.userData = shop
+                placemark.addTapListener { mapObject, _ ->
+                    val tappedShop = mapObject.userData as? Shop
+                    if (tappedShop != null && isAdded) {
+                        val bundle = Bundle().apply { putString("shopId", tappedShop.id) }
+                        findNavController().navigate(
+                            R.id.action_mapFragment_to_shopDetailFragment,
+                            bundle
+                        )
+                    }
+                    true
                 }
-                true
-            }
 
-            placemarks[shop.id] = placemark
+                placemarks[shop.id] = placemark
+            } catch (e: Exception) {
+                Log.e("MapFragment", "Failed to add placemark for shop ${shop.id}", e)
+            }
         }
     }
 
     /**
      * Простой круглый маркер заданного цвета.
      */
-    private fun createMarkerBitmap(color: Int): android.graphics.Bitmap {
+    private fun createMarkerBitmap(color: Int): Bitmap {
         val size = 60
-        val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(bitmap)
-        val paint = android.graphics.Paint().apply {
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint().apply {
             isAntiAlias = true
             this.color = color
-            style = android.graphics.Paint.Style.FILL
+            style = Paint.Style.FILL
         }
         canvas.drawCircle(size / 2f, size / 2f, size / 2.5f, paint)
 
         // Белая обводка
         paint.color = Color.WHITE
-        paint.style = android.graphics.Paint.Style.STROKE
+        paint.style = Paint.Style.STROKE
         paint.strokeWidth = 5f
         canvas.drawCircle(size / 2f, size / 2f, size / 2.5f, paint)
 
@@ -170,24 +188,28 @@ class MapFragment : Fragment() {
     private fun checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(
                 requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED) {
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
             centerOnMyLocation()
         } else {
-            locationPermissionRequest.launch(arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ))
+            locationPermissionRequest.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
         }
     }
 
     private fun centerOnMyLocation() {
         if (ContextCompat.checkSelfPermission(
                 requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED) return
+            ) != PackageManager.PERMISSION_GRANTED
+        ) return
 
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             location?.let {
-                mapView.map.move(
+                mapView?.map?.move(
                     CameraPosition(Point(it.latitude, it.longitude), 14.0f, 0.0f, 0.0f),
                     Animation(Animation.Type.SMOOTH, 1f),
                     null
@@ -199,16 +221,20 @@ class MapFragment : Fragment() {
     override fun onStart() {
         super.onStart()
         MapKitFactory.getInstance().onStart()
-        mapView.onStart()
+        mapView?.onStart()
     }
 
     override fun onStop() {
-        mapView.onStop()
+        mapView?.onStop()
         MapKitFactory.getInstance().onStop()
         super.onStop()
     }
 
     override fun onDestroyView() {
+        // ВАЖНО: очищаем мапу placemarks ДО уничтожения MapView,
+        // чтобы не остались мёртвые ссылки на нативные объекты MapKit
+        placemarks.clear()
+        mapView = null
         super.onDestroyView()
         _binding = null
     }

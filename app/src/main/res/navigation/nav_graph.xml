@@ -13,12 +13,21 @@
             app:argType="string"
             android:defaultValue="@null"
             app:nullable="true" />
+
+        <action
+            android:id="@+id/action_mapFragment_to_shopDetailFragment"
+            app:destination="@id/shopDetailFragment" />
     </fragment>
 
     <fragment
         android:id="@+id/listFragment"
         android:name="com.example.chiplocator.ui.list.ListFragment"
-        android:label="Список" />
+        android:label="Список">
+
+        <action
+            android:id="@+id/action_listFragment_to_shopDetailFragment"
+            app:destination="@id/shopDetailFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/catalogFragment"
