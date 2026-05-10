@@ -6,30 +6,22 @@
 
     <fragment
         android:id="@+id/mapFragment"
-        android:name="com.chiplocator.app.ui.map.MapFragment"
-        android:label="Карта">
-        <action
-            android:id="@+id/action_map_to_shop_detail"
-            app:destination="@id/shopDetailFragment" />
-    </fragment>
+        android:name="com.example.chiplocator.ui.map.MapFragment"
+        android:label="Карта" />
 
     <fragment
         android:id="@+id/listFragment"
-        android:name="com.chiplocator.app.ui.list.ListFragment"
-        android:label="Список">
-        <action
-            android:id="@+id/action_list_to_shop_detail"
-            app:destination="@id/shopDetailFragment" />
-    </fragment>
+        android:name="com.example.chiplocator.ui.list.ListFragment"
+        android:label="Список" />
 
     <fragment
         android:id="@+id/catalogFragment"
-        android:name="com.chiplocator.app.ui.catalog.CatalogFragment"
+        android:name="com.example.chiplocator.ui.catalog.CatalogFragment"
         android:label="Каталог" />
 
     <fragment
         android:id="@+id/shopDetailFragment"
-        android:name="com.chiplocator.app.ui.detail.ShopDetailFragment"
+        android:name="com.example.chiplocator.ui.detail.ShopDetailFragment"
         android:label="Магазин">
         <argument
             android:name="shopId"
