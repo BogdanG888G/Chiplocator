@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.kapt)
-    alias(libs.plugins.google.services)
+    //alias(libs.plugins.google.services)
 }
 
 android {
@@ -69,8 +69,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
 
     // Firebase
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.firestore)
+    //implementation(platform(libs.firebase.bom))
+    //implementation(libs.firebase.firestore)
 
     // Maps & Location
     implementation(libs.play.services.maps)

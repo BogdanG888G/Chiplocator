@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">ChipLocator</string>
+    <string name="map_tab">Карта</string>
+    <string name="list_tab">Список</string>
+    <string name="catalog_tab">Каталог</string>
+    <string name="route_button">Маршрут</string>
+    <string name="where_to_buy">Где купить?</string>
+    <string name="filter_all">Все магазины</string>
+    <string name="filter_promo">С акциями</string>
+    <string name="filter_new">С новинками</string>
+    <string name="badge_promo">Акция</string>
+    <string name="badge_new">Новинка</string>
 </resources>

@@ -1,10 +1,10 @@
-package com.chiplocator.app
+package com.example.chiplocator
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
-import com.chiplocator.app.databinding.ActivityMainBinding
+import com.example.chiplocator.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
