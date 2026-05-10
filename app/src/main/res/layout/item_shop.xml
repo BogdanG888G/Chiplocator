@@ -1,88 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    app:cardElevation="4dp"
-    app:cardCornerRadius="12dp">
+    android:layout_marginBottom="12dp"
+    android:background="@drawable/bg_card_rounded"
+    android:padding="14dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <ImageView
+        android:id="@+id/ivShopPhoto"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:background="@drawable/bg_photo_placeholder"
+        android:scaleType="centerCrop"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/tvShopName"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp">
+        android:layout_marginStart="12dp"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:text="Магазин у дома"
+        app:layout_constraintTop_toTopOf="@id/ivShopPhoto"
+        app:layout_constraintStart_toEndOf="@id/ivShopPhoto"
+        app:layout_constraintEnd_toStartOf="@id/badgePromo" />
 
-        <ImageView
-            android:id="@+id/iv_shop_photo"
-            android:layout_width="match_parent"
-            android:layout_height="140dp"
-            android:scaleType="centerCrop"
-            android:contentDescription="Фото магазина" />
+    <TextView
+        android:id="@+id/badgePromo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_badge_promo"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="3dp"
+        android:text="Акция"
+        android:textColor="@color/white"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/ivShopPhoto"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-        <TextView
-            android:id="@+id/tv_shop_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginTop="8dp" />
+    <TextView
+        android:id="@+id/badgeNew"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_badge_new"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="3dp"
+        android:text="Новинка"
+        android:textColor="@color/white"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/badgePromo"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-        <TextView
-            android:id="@+id/tv_shop_address"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:layout_marginTop="4dp" />
+    <TextView
+        android:id="@+id/tvShopAddress"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="2dp"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp"
+        android:text="ул. Ленина, 5"
+        app:layout_constraintTop_toBottomOf="@id/tvShopName"
+        app:layout_constraintStart_toEndOf="@id/ivShopPhoto"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-        <TextView
-            android:id="@+id/tv_distance"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="13sp"
-            android:textColor="@color/purple_500"
-            android:layout_marginTop="4dp" />
+    <TextView
+        android:id="@+id/tvDistance"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="2dp"
+        android:textColor="@color/text_secondary"
+        android:textSize="12sp"
+        app:layout_constraintTop_toBottomOf="@id/tvShopAddress"
+        app:layout_constraintStart_toEndOf="@id/ivShopPhoto"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp">
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnRoute"
+        android:layout_width="wrap_content"
+        android:layout_height="32dp"
+        android:layout_marginTop="8dp"
+        android:text="Маршрут"
+        android:textAllCaps="false"
+        android:textColor="@color/white"
+        android:textSize="12sp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        app:cornerRadius="8dp"
+        app:backgroundTint="@color/primary_orange"
+        app:layout_constraintTop_toBottomOf="@id/ivShopPhoto"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-            <TextView
-                android:id="@+id/badge_promo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Акция"
-                android:textColor="@android:color/white"
-                android:background="@color/red_promo"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="4dp"
-                android:textSize="12sp"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/badge_new"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Новинка"
-                android:textColor="@android:color/white"
-                android:background="@color/blue_new"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="4dp"
-                android:textSize="12sp"
-                android:layout_marginStart="8dp"
-                android:visibility="gone" />
-
-        </LinearLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_route"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Маршрут"
-            android:layout_marginTop="8dp" />
-
-    </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+</androidx.constraintlayout.widget.ConstraintLayout>

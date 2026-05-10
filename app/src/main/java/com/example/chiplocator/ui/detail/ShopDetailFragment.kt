@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -59,8 +60,7 @@ class ShopDetailFragment : Fragment() {
                 startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${shop.phone}")))
             }
             binding.btnRoute.setOnClickListener {
-                val uri = Uri.parse("geo:${shop.latitude},${shop.longitude}?q=${shop.latitude},${shop.longitude}(${shop.name})")
-                startActivity(Intent(Intent.ACTION_VIEW, uri))
+                showRouteDialog(shop.latitude, shop.longitude, shop.name)
             }
             binding.btnShare.setOnClickListener {
                 val intent = Intent(Intent.ACTION_SEND).apply {
@@ -76,8 +76,75 @@ class ShopDetailFragment : Fragment() {
         }
     }
 
+    /**
+     * Показывает диалог с выбором способа маршрута.
+     */
+    private fun showRouteDialog(lat: Double, lon: Double, name: String) {
+        val options = arrayOf("Пешком 🚶", "На машине 🚗", "Общественный транспорт 🚌")
+        AlertDialog.Builder(requireContext())
+            .setTitle("Как добираемся?")
+            .setItems(options) { _, which ->
+                val mode = when (which) {
+                    0 -> RouteMode.PEDESTRIAN
+                    1 -> RouteMode.AUTO
+                    else -> RouteMode.TRANSIT
+                }
+                openRoute(lat, lon, name, mode)
+            }
+            .show()
+    }
+
+    /**
+     * Открывает маршрут в Яндекс.Картах.
+     * Сначала пытается открыть приложение, иначе — веб-версию.
+     */
+    private fun openRoute(lat: Double, lon: Double, name: String, mode: RouteMode) {
+        val yandexMode = when (mode) {
+            RouteMode.PEDESTRIAN -> "pd"
+            RouteMode.AUTO -> "auto"
+            RouteMode.TRANSIT -> "mt"
+        }
+
+        // 1. Пробуем приложение Яндекс.Карты
+        val yandexAppUri = Uri.parse(
+            "yandexmaps://maps.yandex.ru/?rtext=~$lat,$lon&rtt=$yandexMode"
+        )
+        val yandexAppIntent = Intent(Intent.ACTION_VIEW, yandexAppUri).apply {
+            setPackage("ru.yandex.yandexmaps")
+        }
+        if (yandexAppIntent.resolveActivity(requireContext().packageManager) != null) {
+            startActivity(yandexAppIntent)
+            return
+        }
+
+        // 2. Пробуем Яндекс Навигатор (для авто)
+        if (mode == RouteMode.AUTO) {
+            val naviUri = Uri.parse("yandexnavi://build_route_on_map?lat_to=$lat&lon_to=$lon")
+            val naviIntent = Intent(Intent.ACTION_VIEW, naviUri).apply {
+                setPackage("ru.yandex.yandexnavi")
+            }
+            if (naviIntent.resolveActivity(requireContext().packageManager) != null) {
+                startActivity(naviIntent)
+                return
+            }
+        }
+
+        // 3. Открываем Яндекс.Карты в браузере
+        val webUri = Uri.parse(
+            "https://yandex.ru/maps/?rtext=~$lat,$lon&rtt=$yandexMode"
+        )
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, webUri))
+        } catch (e: Exception) {
+            val geoUri = Uri.parse("geo:$lat,$lon?q=$lat,$lon($name)")
+            startActivity(Intent(Intent.ACTION_VIEW, geoUri))
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
+
+    private enum class RouteMode { PEDESTRIAN, AUTO, TRANSIT }
 }

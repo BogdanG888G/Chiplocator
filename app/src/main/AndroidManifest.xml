@@ -5,6 +5,26 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <queries>
+        <!-- Яндекс.Карты -->
+        <package android:name="ru.yandex.yandexmaps" />
+        <!-- Яндекс Навигатор -->
+        <package android:name="ru.yandex.yandexnavi" />
+
+        <!-- Для звонков и браузера -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+    </queries>
+
     <application
         android:name=".ChipLocatorApp"
         android:allowBackup="true"
@@ -23,7 +43,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
 
     </application>
 

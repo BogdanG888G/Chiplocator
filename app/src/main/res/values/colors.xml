@@ -1,13 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="red_promo">#FFD32F2F</color>
-    <color name="blue_new">#FF1565C0</color>
-    <color name="green_marker">#FF388E3C</color>
+    <!-- Основные цвета бренда -->
+    <color name="primary_orange">#FF8C1A</color>
+    <color name="primary_orange_dark">#E07015</color>
+    <color name="primary_orange_light">#FFB366</color>
+
+    <!-- Фоны -->
+    <color name="background_cream">#FFF4E0</color>
+    <color name="background_card">#FFFFFF</color>
+    <color name="background_screen">#FFF8EC</color>
+
+    <!-- Бейджи -->
+    <color name="badge_promo">#FF6B1A</color>
+    <color name="badge_new">#3F8EFC</color>
+    <color name="badge_hit">#7E57C2</color>
+
+    <!-- Текст -->
+    <color name="text_primary">#2A2A2A</color>
+    <color name="text_secondary">#7A6A55</color>
+    <color name="text_on_primary">#FFFFFF</color>
+
+    <!-- Прочее -->
+    <color name="divider">#F0E0C5</color>
+    <color name="placeholder_grey">#D9D0C0</color>
+
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
 </resources>

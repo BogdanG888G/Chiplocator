@@ -11,18 +11,22 @@ import com.example.chiplocator.R
 import com.example.chiplocator.databinding.ItemProductBinding
 import com.example.chiplocator.domain.model.Product
 
-class ProductGridAdapter : ListAdapter<Product, ProductGridAdapter.VH>(Diff()) {
+class ProductGridAdapter : ListAdapter<Product, ProductGridAdapter.ProductViewHolder>(Diff()) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
         val binding = ItemProductBinding.inflate(
             LayoutInflater.from(parent.context), parent, false
         )
-        return VH(binding)
+        return ProductViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
+    override fun onBindViewHolder(holder: ProductViewHolder, position: Int) {
+        holder.bind(getItem(position))
+    }
 
-    class VH(private val binding: ItemProductBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class ProductViewHolder(private val binding: ItemProductBinding) :
+        RecyclerView.ViewHolder(binding.root) {
+
         fun bind(p: Product) {
             binding.tvProductName.text = p.name
             binding.tvProductPrice.text = "%.0f ₽".format(p.price)
@@ -35,11 +39,14 @@ class ProductGridAdapter : ListAdapter<Product, ProductGridAdapter.VH>(Diff()) {
                 .error(R.drawable.placeholder_product)
                 .centerCrop()
                 .into(binding.ivProduct)
+
+            // В ассортименте магазина кнопка "Где купить?" не нужна
+            binding.btnWhereToBuy.visibility = View.GONE
         }
     }
 
     class Diff : DiffUtil.ItemCallback<Product>() {
-        override fun areItemsTheSame(o: Product, n: Product) = o.id == n.id
-        override fun areContentsTheSame(o: Product, n: Product) = o == n
+        override fun areItemsTheSame(old: Product, new: Product) = old.id == new.id
+        override fun areContentsTheSame(old: Product, new: Product) = old == new
     }
 }

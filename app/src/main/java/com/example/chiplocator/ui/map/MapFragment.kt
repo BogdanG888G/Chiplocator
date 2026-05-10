@@ -28,9 +28,14 @@ import com.google.android.material.chip.Chip
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.layers.ObjectEvent
 import com.yandex.mapkit.map.CameraPosition
+import com.yandex.mapkit.map.IconStyle
 import com.yandex.mapkit.map.PlacemarkMapObject
 import com.yandex.mapkit.mapview.MapView
+import com.yandex.mapkit.user_location.UserLocationLayer
+import com.yandex.mapkit.user_location.UserLocationObjectListener
+import com.yandex.mapkit.user_location.UserLocationView
 import com.yandex.runtime.image.ImageProvider
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -47,6 +52,7 @@ class MapFragment : Fragment() {
     private var mapView: MapView? = null
     private val placemarks = mutableMapOf<String, PlacemarkMapObject>()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var userLocationLayer: UserLocationLayer? = null
 
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -54,6 +60,7 @@ class MapFragment : Fragment() {
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         ) {
+            setupUserLocationLayer()
             centerOnMyLocation()
         }
     }
@@ -93,6 +100,87 @@ class MapFragment : Fragment() {
 
         viewModel.syncData()
         observeShops()
+
+        // При первом запуске запрашиваем разрешение
+        if (ContextCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            locationPermissionRequest.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        } else {
+            setupUserLocationLayer()
+        }
+    }
+
+    /**
+     * Включает встроенный слой Yandex MapKit для отображения местоположения
+     * пользователя (синяя точка с обводкой).
+     */
+    private fun setupUserLocationLayer() {
+        if (ContextCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) return
+
+        val mapWindow = mapView?.mapWindow ?: return
+
+        try {
+            val mapKit = MapKitFactory.getInstance()
+            userLocationLayer = mapKit.createUserLocationLayer(mapWindow).apply {
+                isVisible = true
+                isHeadingEnabled = true
+                setObjectListener(object : UserLocationObjectListener {
+                    override fun onObjectAdded(view: UserLocationView) {
+                        view.pin.setIcon(
+                            ImageProvider.fromBitmap(createUserLocationBitmap()),
+                            IconStyle().setScale(0.8f)
+                        )
+                        view.arrow.setIcon(
+                            ImageProvider.fromBitmap(createUserLocationBitmap()),
+                            IconStyle().setScale(0.8f)
+                        )
+                        view.accuracyCircle.fillColor = Color.argb(60, 0, 122, 255)
+                    }
+
+                    override fun onObjectRemoved(view: UserLocationView) {}
+
+                    override fun onObjectUpdated(view: UserLocationView, p1: ObjectEvent) {
+                    }
+                })
+            }
+        } catch (e: Exception) {
+            Log.e("MapFragment", "Failed to setup UserLocationLayer", e)
+        }
+    }
+
+    /**
+     * Синий круг с белой обводкой — иконка пользователя на карте.
+     */
+    private fun createUserLocationBitmap(): Bitmap {
+        val size = 80
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint().apply { isAntiAlias = true }
+
+        // Полупрозрачный внешний круг
+        paint.color = Color.argb(80, 0, 122, 255)
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+
+        // Белая обводка
+        paint.color = Color.WHITE
+        paint.style = Paint.Style.FILL
+        canvas.drawCircle(size / 2f, size / 2f, size / 3f, paint)
+
+        // Синий центр
+        paint.color = Color.rgb(0, 122, 255)
+        canvas.drawCircle(size / 2f, size / 2f, size / 4f, paint)
+
+        return bitmap
     }
 
     private fun observeShops() {
@@ -104,7 +192,6 @@ class MapFragment : Fragment() {
     private fun updateMarkers(shops: List<Shop>) {
         val map = mapView?.map ?: return
 
-        // Очистка старых маркеров — безопасно, через mapObjects.clear()
         try {
             map.mapObjects.clear()
         } catch (e: Exception) {
@@ -146,7 +233,7 @@ class MapFragment : Fragment() {
     }
 
     /**
-     * Простой круглый маркер заданного цвета.
+     * Простой круглый маркер магазина заданного цвета.
      */
     private fun createMarkerBitmap(color: Int): Bitmap {
         val size = 60
@@ -170,7 +257,7 @@ class MapFragment : Fragment() {
 
     private fun showFilterBottomSheet() {
         val dialog = BottomSheetDialog(requireContext())
-        val sheet = layoutInflater.inflate(R.layout.bottom_sheet_filter, null)
+        val sheet = layoutInflater.inflate(R.layout.bottom_sheet_filter, binding.root, false)
         dialog.setContentView(sheet)
 
         sheet.findViewById<Chip>(R.id.chipAll).setOnClickListener {
@@ -231,9 +318,9 @@ class MapFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        // ВАЖНО: очищаем мапу placemarks ДО уничтожения MapView,
-        // чтобы не остались мёртвые ссылки на нативные объекты MapKit
         placemarks.clear()
+        userLocationLayer?.isVisible = false
+        userLocationLayer = null
         mapView = null
         super.onDestroyView()
         _binding = null
