@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -85,16 +86,34 @@ class CatalogViewModelTest {
     }
 
     /**
-     * Проверяет, что без фильтров отдаётся весь список товаров.
+     * Хелпер: подписаться на products, дождаться полного списка,
+     * выполнить действие и вернуть итоговое значение.
      */
+    private suspend fun TestScope.productsAfter(
+        viewModel: CatalogViewModel,
+        action: suspend () -> Unit
+    ): List<Product> {
+        var result: List<Product> = emptyList()
+        viewModel.products.test {
+            awaitItem()              // initial empty
+            advanceUntilIdle()
+            awaitItem()              // полный список
+
+            action()
+            advanceUntilIdle()
+
+            result = expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+        return result
+    }
+
     @Test
     fun `when no filter applied then all products are returned`() = runTest {
         val viewModel = CatalogViewModel(repository)
 
         viewModel.products.test {
-            // Первое значение — initial empty
             assertEquals(emptyList<Product>(), awaitItem())
-
             advanceUntilIdle()
             val result = awaitItem()
 
@@ -104,116 +123,93 @@ class CatalogViewModelTest {
         }
     }
 
-    /**
-     * Поиск по названию товара (регистр не важен).
-     */
     @Test
     fun `when search query matches product name then only matching products returned`() = runTest {
         val viewModel = CatalogViewModel(repository)
-        advanceUntilIdle()
 
-        viewModel.setSearchQuery("lays")
-        advanceUntilIdle()
-
-        viewModel.products.test {
-            val result = awaitItem()
-            assertEquals(2, result.size)
-            assertTrue(result.all { it.name.contains("Lays", ignoreCase = true) })
-            cancelAndIgnoreRemainingEvents()
+        val result = productsAfter(viewModel) {
+            viewModel.setSearchQuery("lays")
         }
+
+        assertEquals(2, result.size)
+        assertTrue(result.all { it.name.contains("Lays", ignoreCase = true) })
     }
 
-    /**
-     * Поиск по категории — должен вернуть все товары категории.
-     */
     @Test
     fun `when search query matches category then matching products returned`() = runTest {
         val viewModel = CatalogViewModel(repository)
-        advanceUntilIdle()
 
-        viewModel.setSearchQuery("кукурузные")
-        advanceUntilIdle()
-
-        viewModel.products.test {
-            val result = awaitItem()
-            assertEquals(1, result.size)
-            assertEquals("Cheetos Сыр", result.first().name)
-            cancelAndIgnoreRemainingEvents()
+        val result = productsAfter(viewModel) {
+            viewModel.setSearchQuery("кукурузные")
         }
+
+        assertEquals(1, result.size)
+        assertEquals("Cheetos Сыр", result.first().name)
     }
 
-    /**
-     * Фильтр по категории "Чипсы" — должен вернуть только чипсы.
-     */
     @Test
     fun `when category filter applied then only products of that category returned`() = runTest {
         val viewModel = CatalogViewModel(repository)
-        advanceUntilIdle()
 
-        viewModel.setCategory("Чипсы")
-        advanceUntilIdle()
-
-        viewModel.products.test {
-            val result = awaitItem()
-            assertEquals(3, result.size)
-            assertTrue(result.all { it.category == "Чипсы" })
-            cancelAndIgnoreRemainingEvents()
+        val result = productsAfter(viewModel) {
+            viewModel.setCategory("Чипсы")
         }
+
+        assertEquals(3, result.size)
+        assertTrue(result.all { it.category == "Чипсы" })
     }
 
-    /**
-     * Комбинация фильтра по категории и поиска: должны примениться оба.
-     */
     @Test
     fun `when both category and search applied then both filters work`() = runTest {
         val viewModel = CatalogViewModel(repository)
-        advanceUntilIdle()
 
-        viewModel.setCategory("Чипсы")
-        viewModel.setSearchQuery("Pringles")
-        advanceUntilIdle()
-
-        viewModel.products.test {
-            val result = awaitItem()
-            assertEquals(1, result.size)
-            assertEquals("p4", result.first().id)
-            assertEquals("Чипсы", result.first().category)
-            cancelAndIgnoreRemainingEvents()
+        val result = productsAfter(viewModel) {
+            viewModel.setCategory("Чипсы")
+            viewModel.setSearchQuery("Pringles")
         }
+
+        assertEquals(1, result.size)
+        assertEquals("p4", result.first().id)
+        assertEquals("Чипсы", result.first().category)
     }
 
     /**
      * Сброс категории (null) возвращает все товары.
+     * Делаем одну непрерывную подписку, чтобы не ловить проблемы
+     * с повторным подключением к StateFlow.
      */
     @Test
     fun `when category filter is reset to null then all products returned`() = runTest {
         val viewModel = CatalogViewModel(repository)
-        advanceUntilIdle()
-
-        viewModel.setCategory("Чипсы")
-        advanceUntilIdle()
-        viewModel.setCategory(null)
-        advanceUntilIdle()
 
         viewModel.products.test {
-            val result = awaitItem()
+            awaitItem()                     // initial empty
+            advanceUntilIdle()
+            awaitItem()                     // полный список (4 шт.)
+
+            // ставим фильтр
+            viewModel.setCategory("Чипсы")
+            advanceUntilIdle()
+            val filtered = expectMostRecentItem()
+            assertEquals(3, filtered.size)
+            assertTrue(filtered.all { it.category == "Чипсы" })
+
+            // сбрасываем фильтр
+            viewModel.setCategory(null)
+            advanceUntilIdle()
+            val result = expectMostRecentItem()
+
             assertEquals(4, result.size)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
-    /**
-     * Список категорий формируется из товаров (без дубликатов, отсортирован).
-     */
     @Test
     fun `categories flow emits distinct sorted list of categories`() = runTest {
         val viewModel = CatalogViewModel(repository)
-        advanceUntilIdle()
 
         viewModel.categories.test {
-            // initial empty
             assertEquals(emptyList<String>(), awaitItem())
-
             advanceUntilIdle()
             val categories = awaitItem()
 
@@ -223,21 +219,14 @@ class CatalogViewModelTest {
         }
     }
 
-    /**
-     * Поиск по несуществующему слову возвращает пустой список.
-     */
     @Test
     fun `when search query does not match anything then empty list returned`() = runTest {
         val viewModel = CatalogViewModel(repository)
-        advanceUntilIdle()
 
-        viewModel.setSearchQuery("шоколад")
-        advanceUntilIdle()
-
-        viewModel.products.test {
-            val result = awaitItem()
-            assertTrue(result.isEmpty())
-            cancelAndIgnoreRemainingEvents()
+        val result = productsAfter(viewModel) {
+            viewModel.setSearchQuery("шоколад")
         }
+
+        assertTrue(result.isEmpty())
     }
 }
